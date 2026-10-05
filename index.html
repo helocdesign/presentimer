@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>PRESEN TIMER V1</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Roboto+Mono:wght@500;700&family=Orbitron:wght@600;700&display=swap');
+
+:root {
+  --top-reserve: 56px; /* space kept free for the fixed header row (buttons / app name) */
+  --bg: #000000;
+  --bg-raised: #161616;
+  --text: #F5F1E8;
+  --text-dim: #9BA39C;
+  --line: #3A413C;
+  --ok: #6FA787;
+  --warn: #D9A441;
+  --mid: #E2793A;
+  --danger: #C1502E;
+}
+
+body.theme-light {
+  --bg: #FFFFFF;
+  --bg-raised: #F1EFE9;
+  --text: #1B1F1D;
+  --text-dim: #6B7268;
+  --line: #D8D5CC;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.timer-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--top-reserve) 10px 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* margin:auto centers the block when there is room, and never pushes it above the top when there isn't */
+.timer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-block: auto;
+}
+
+.settings-section {
+  flex: 0 0 auto;
+  width: 100%;
+  overflow-y: visible;
+  overflow-x: hidden;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 24px 28px;
+}
+
+.message-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(14px, 3.4vh, 22px);
+  letter-spacing: 0.02em;
+  text-align: center;
+  padding: 6px 4px;
+  width: min(420px, 90vw);
+  transition: border-color 0.2s, color 0.2s;
+}
+.message-input:focus {
+  outline: none;
+  border-color: var(--ok);
+  color: var(--text);
+}
+
+.clock-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.state-label {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.clock {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(28px, min(var(--fit-h, 58vh), 24vw), 560px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--warn);
+  letter-spacing: -0.02em;
+  transition: color 0.4s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.clock.standby { color: var(--text-dim); }
+.clock.hh-format { font-size: clamp(24px, min(var(--fit-h, 58vh), 15vw), 560px); }
+.clock.warn { color: var(--mid); }
+.clock.danger { color: var(--danger); }
+.clock.over { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.progress-track {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 10px;
+  background: var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--warn);
+  transition: width 1s linear, background-color 0.4s ease;
+}
+.progress-fill.warn { background: var(--mid); }
+.progress-fill.danger { background: var(--danger); }
+
+.progress-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.45) 0,
+    rgba(0, 0, 0, 0.45) 1px,
+    transparent 1px,
+    transparent 10%
+  );
+  mix-blend-mode: multiply;
+}
+
+.message-box {
+  width: min(900px, 92vw);
+  max-width: 900px;
+  border: 1px solid var(--text-dim);
+  border-radius: 4px;
+  padding: 2px 10px;
+}
+.message-box textarea {
+  width: 100%;
+  height: 2.6em;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(16px, 5vh, 39px);
+  line-height: 1.3;
+  text-align: center;
+  padding: 10px 4px;
+  resize: none;
+  overflow-y: auto;
+}
+.message-box textarea:focus { outline: none; }
+.message-box textarea::placeholder { color: var(--text-dim); }
+
+.controls-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.settings-tier {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.tier-divider {
+  width: calc(100% + 48px);
+  margin-left: -24px;
+  margin-right: -24px;
+  border: none;
+  border-top: 1px solid var(--line);
+  opacity: 0.7;
+}
+
+.collapsible-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+body.settings-collapsed .collapsible-settings { display: none; }
+
+.settings-toggle-btn {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; flex: 1 1 260px; }
+
+body.style-simple .message-input,
+body.style-simple .message-box { display: none; }
+
+body.style-timeonly .message-input,
+body.style-timeonly .state-label,
+body.style-timeonly .progress-track,
+body.style-timeonly .message-box { display: none; }
+
+body.style-timeonly .clock {
+  font-size: clamp(36px, min(var(--fit-h, 65vh), 34vw), 720px);
+}
+body.style-timeonly .clock.hh-format {
+  font-size: clamp(30px, min(var(--fit-h, 65vh), 22vw), 560px);
+}
+
+body.style-timeonly .settings-section { display: none; }
+body.style-timeonly .timer-section {
+  flex: 0 0 100vh;
+  height: 100vh;
+  padding-top: 56px;
+}
+
+body.hide-gauge .progress-track { display: none; }
+
+body.font-mono .clock { font-family: 'Roboto Mono', monospace; }
+body.font-digital .clock { font-family: 'Orbitron', sans-serif; }
+
+body.digit-white .clock { color: #FFFFFF; }
+body.digit-yellow .clock { color: #D9A441; }
+body.digit-lightblue .clock { color: #5FC3E0; }
+body.digit-pink .clock { color: #E8759C; }
+body.theme-light.digit-white .clock { color: #000000; }
+
+/* 残り時間が少なくなったら、選択中の文字色より警告色を優先表示 */
+body .clock.warn { color: var(--mid) !important; }
+body .clock.danger { color: var(--danger) !important; }
+
+button {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text);
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+button:hover { border-color: var(--ok); }
+button:active { transform: scale(0.97); }
+
+select {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text);
+  padding: 12px 20px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color 0.15s;
+}
+select:hover { border-color: var(--ok); }
+select:focus { outline: none; border-color: var(--ok); }
+
+button.primary {
+  background: var(--ok);
+  color: #12160F;
+  border-color: var(--ok);
+  font-weight: 500;
+  min-width: 110px;
+}
+
+#resetBtn { color: var(--danger); }
+button.primary.running { background: var(--bg-raised); color: var(--text); border-color: var(--warn); }
+
+.fs-corner-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+  font-size: 12px;
+  padding: 8px 14px;
+  color: var(--text-dim);
+}
+
+/* Fullscreen API非対応ブラウザ(iOS Safariなど)向けの擬似フルスクリーン */
+body.pseudo-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 9999;
+}
+
+.adjust-row { display: flex; gap: 8px; }
+.adjust-row button { padding: 8px 12px; font-size: 13px; color: var(--text-dim); }
+
+.mode-style-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; width: 100%; }
+.mode-style-row button,
+.mode-style-row select { color: var(--text-dim); }
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-content: flex-start;
+  flex: 1 1 300px;
+}
+.presets button { padding: 7px 12px; font-size: 12px; color: var(--text-dim); }
+.presets button.active { border-color: var(--ok); color: var(--text); }
+
+.custom-set { display: flex; gap: 4px; align-items: center; }
+.custom-set select {
+  width: 60px;
+  padding-left: 6px;
+  padding-right: 6px;
+  font-size: 14px;
+}
+.custom-set span { color: var(--text-dim); font-size: 12px; }
+
+.settings-panel {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 320px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+}
+.settings-row .label {
+  white-space: nowrap;
+  flex: none;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.settings-row .swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.settings-row .label {
+  color: var(--text-dim);
+  font-size: 13px;
+  flex: 1;
+}
+.settings-row .time-input {
+  width: 66px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  padding: 8px 6px;
+  border-radius: 6px;
+  text-align: center;
+}
+.settings-row .time-input:focus { outline: none; border-color: var(--ok); }
+
+.footer-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 260px;
+}
+.footer-row button { font-size: 12px; padding: 8px 14px; color: var(--text-dim); }
+.footer-row select {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.footer-row select:focus { outline: none; border-color: var(--ok); }
+button.off { color: var(--text-dim); border-color: var(--line); opacity: 0.6; }
+.present-mode-btn { border-color: var(--warn); }
+.present-mode-btn:hover { border-color: var(--warn); }
+.present-diag {
+  position: fixed;
+  top: 60px;
+  right: 12px;
+  z-index: 50;
+  font-size: 11px;
+  color: var(--danger);
+  max-width: 240px;
+  text-align: right;
+}
+.present-corner-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 50;
+  font-size: 12px;
+  padding: 8px 14px;
+  color: var(--text-dim);
+}
+.app-title {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.3;
+  color: var(--text-dim);
+  pointer-events: none;
+  user-select: none;
+}
+.app-title-main { font-size: 20px; font-weight: 500; letter-spacing: 0.08em; }
+.app-title-sub { font-size: 10px; letter-spacing: 0.06em; }
+body.style-timeonly .app-title { display: none; }
+@media (max-width: 720px) {
+  :root { --top-reserve: 104px; }
+  .app-title { top: 60px; }
+}
+.bottom-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.bottom-row .shortcut-hint { width: auto; }
+.shortcut-hint {
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  opacity: 0.8;
+}
+
+/* リセット・開始以外のボタン/セレクトの高さを統一 */
+button:not(#resetBtn):not(#startBtn),
+select {
+  height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock.over { animation: none; }
+  .progress-fill { transition: none; }
+}
+
+@media (max-width: 480px) {
+  .settings-section { padding: 14px 12px 20px; gap: 14px; }
+  .tier-divider { width: calc(100% + 24px); margin-left: -12px; margin-right: -12px; }
+  .message-box textarea { font-size: clamp(14px, 4vh, 27px); padding: 7px 4px; }
+  button { font-size: 12px; padding: 9px 14px; }
+  .presets button, .footer-row button { font-size: 11px; padding: 7px 10px; }
+  .custom-set select, .time-input { font-size: 13px; }
+  .shortcut-hint { font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-title">
+  <div class="app-title-main">PRESEN TIMER V1</div>
+  <div class="app-title-sub">produced by helocdesign</div>
+</div>
+
+<button id="fullscreenBtn" class="fs-corner-btn">全画面表示</button>
+
+<button id="presentFsBtn" class="present-mode-btn present-corner-btn" data-i18n="presentMode">プレゼンテーションモード</button>
+<span id="presentDiag" class="present-diag"></span>
+
+<div class="timer-section">
+<div class="timer-content" id="timerContent">
+
+  <input class="message-input" id="messageInput" value="残り時間" maxlength="40">
+
+  <div class="clock-wrap">
+    <div class="state-label" id="stateLabel">スタンバイ</div>
+    <div class="clock standby" id="clock">10:00</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div><div class="progress-ticks"></div></div>
+    <div class="message-box">
+      <textarea id="freeMessageInput" data-i18n-placeholder="messagePlaceholder" placeholder="ここにメッセージを入力…" maxlength="120" rows="2"></textarea>
+    </div>
+  </div>
+
+</div><!-- /timer-content -->
+</div>
+
+<div class="settings-section">
+
+  <div class="controls-row">
+
+    <div class="settings-tier">
+      <div class="controls">
+        <button id="resetBtn" data-i18n="reset">リセット</button>
+        <button class="primary" id="startBtn" data-i18n="start">開始</button>
+        <div class="adjust-row">
+          <button id="minus1" data-i18n="minus1">-1分</button>
+          <button id="plus1" data-i18n="plus1">+1分</button>
+        </div>
+      </div>
+
+      <div class="presets" id="presets">
+        <div class="custom-set">
+          <select id="customHours"></select>
+          <span>:</span>
+          <select id="customMinutes"></select>
+          <span>:</span>
+          <select id="customSeconds"></select>
+          <span data-i18n="setTo">に設定</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="tier-divider">
+
+    <div id="collapsibleSettings" class="collapsible-settings">
+
+    <div class="settings-tier">
+      <div class="footer-row">
+        <select id="soundToggleSelect">
+          <option value="on" data-i18n="soundOn">音: ON</option>
+          <option value="off" data-i18n="soundOff" selected>音: OFF</option>
+        </select>
+        <select id="soundTypeSelect">
+          <option value="sine" data-i18n="soundBell">音の種類: ベル</option>
+          <option value="square" data-i18n="soundSquare">音の種類: 電子音</option>
+          <option value="triangle" data-i18n="soundTriangle">音の種類: やわらか</option>
+        </select>
+        <button id="soundCheckBtn" data-i18n="soundCheck">音の確認</button>
+      </div>
+
+      <div class="settings-panel">
+        <div class="settings-row">
+          <span class="swatch" style="background:var(--warn)"></span>
+          <span class="label" data-i18n="warn1Label">警告(1回)</span>
+          <input class="time-input" id="warn1Input" value="1:00" placeholder="mm:ss">
+        </div>
+        <div class="settings-row">
+          <span class="swatch" style="background:var(--danger)"></span>
+          <span class="label" data-i18n="warn2Label">危険(2回)</span>
+          <input class="time-input" id="warn2Input" value="0:10" placeholder="mm:ss">
+        </div>
+        <div class="settings-row">
+          <span class="swatch" style="background:var(--text-dim)"></span>
+          <span class="label" data-i18n="endLabel">終了(3回・自動)</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="tier-divider">
+
+    <div class="settings-tier">
+      <div class="mode-style-row">
+        <select id="modeSelect">
+          <option value="down" data-i18n="modeDown">モード: カウントダウン</option>
+          <option value="up" data-i18n="modeUp">モード: カウントアップ</option>
+        </select>
+        <select id="gaugeToggleSelect">
+          <option value="on" data-i18n="gaugeOn">ゲージ: ON</option>
+          <option value="off" data-i18n="gaugeOff">ゲージ: OFF</option>
+        </select>
+        <select id="displayStyleSelect">
+          <option value="full" data-i18n="styleFull">スタイル: フル</option>
+          <option value="simple" data-i18n="styleSimple">スタイル: シンプル</option>
+          <option value="timeonly" data-i18n="styleTimeonly">スタイル: 時間のみ</option>
+        </select>
+        <select id="themeSelect">
+          <option value="dark" data-i18n="themeDark">背景色: 黒</option>
+          <option value="light" data-i18n="themeLight">背景色: 白</option>
+        </select>
+        <select id="digitColorSelect"></select>
+        <select id="fontSelect">
+          <option value="grotesk" data-i18n="fontStd">フォント: 標準</option>
+          <option value="mono" data-i18n="fontMono">フォント: モノスペース</option>
+          <option value="digital" data-i18n="fontDigital">フォント: デジタル</option>
+        </select>
+        <select id="langSelect">
+          <option value="ja">言語: 日本語</option>
+          <option value="en">Language: English</option>
+        </select>
+      </div>
+    </div>
+
+    <hr class="tier-divider">
+
+    </div><!-- /collapsibleSettings -->
+
+    <div class="bottom-row">
+      <button id="settingsToggleBtn" class="settings-toggle-btn">詳細設定</button>
+      <div class="shortcut-hint" id="shortcutHint" data-i18n="shortcutHint">Space:開始・一時停止・再開　/　Esc:全画面表示解除</div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ---------- i18n ----------
+const I18N = {
+  ja: {
+    standby: 'スタンバイ', running: '進行中', paused: '一時停止',
+    start: '開始', resume: '再開', pauseLabel: '一時停止',
+    reset: 'リセット', minus1: '-1分', plus1: '+1分',
+    preset10s: '10秒', preset30s: '30秒', preset1m: '1分', preset3m: '3分', preset5m: '5分',
+    preset10m: '10分', preset15m: '15分', preset20m: '20分', preset30m: '30分', preset45m: '45分', preset1h: '1時間',
+    setTo: 'に設定',
+    soundOn: '音: ON', soundOff: '音: OFF',
+    soundBell: '音の種類: ベル', soundSquare: '音の種類: 電子音', soundTriangle: '音の種類: やわらか',
+    soundCheck: '音の確認',
+    warn1Label: '警告(1回)', warn2Label: '危険(2回)', endLabel: '終了(3回・自動)',
+    modeDown: 'モード: カウントダウン', modeUp: 'モード: カウントアップ',
+    styleFull: '表示スタイル: フル', styleSimple: '表示スタイル: シンプル', styleTimeonly: '表示スタイル: 時間のみ',
+    gaugeOn: 'ゲージ: ON', gaugeOff: 'ゲージ: OFF',
+    fontStd: 'フォント: 標準', fontMono: 'フォント: モノスペース', fontDigital: 'フォント: デジタル',
+    themeDark: '背景色: 黒', themeLight: '背景色: 白',
+    digitWhite: '文字色: 白', digitYellow: '文字色: 黄色',
+    digitLightblue: '文字色: 水色', digitPink: '文字色: ピンク',
+    presentMode: 'プレゼンテーションモード', presentModeExit: 'プレゼンテーションモードを解除',
+    settingsOpen: '詳細設定', settingsClose: '詳細設定を閉じる ▲',
+    labelRemaining: '残り時間', labelElapsed: '経過時間',
+    fullscreen: '全画面表示', fullscreenExit: '全画面表示を解除',
+    shortcutHint: 'Space:開始・一時停止・再開　/　Esc:全画面表示解除',
+    messagePlaceholder: 'ここにメッセージを入力…',
+  },
+  en: {
+    standby: 'Standby', running: 'Running', paused: 'Paused',
+    start: 'Start', resume: 'Resume', pauseLabel: 'Pause',
+    reset: 'Reset', minus1: '-1 min', plus1: '+1 min',
+    preset10s: '10s', preset30s: '30s', preset1m: '1 min', preset3m: '3 min', preset5m: '5 min',
+    preset10m: '10 min', preset15m: '15 min', preset20m: '20 min', preset30m: '30 min', preset45m: '45 min', preset1h: '1 hour',
+    setTo: 'Set',
+    soundOn: 'Sound: ON', soundOff: 'Sound: OFF',
+    soundBell: 'Sound: Bell', soundSquare: 'Sound: Buzzer', soundTriangle: 'Sound: Soft',
+    soundCheck: 'Test Sound',
+    warn1Label: 'Warning (1 beep)', warn2Label: 'Danger (2 beeps)', endLabel: 'End (3 beeps, auto)',
+    modeDown: 'Mode: Countdown', modeUp: 'Mode: Count Up',
+    styleFull: 'Style: Full', styleSimple: 'Style: Simple', styleTimeonly: 'Style: Time Only',
+    gaugeOn: 'Gauge: ON', gaugeOff: 'Gauge: OFF',
+    fontStd: 'Font: Standard', fontMono: 'Font: Monospace', fontDigital: 'Font: Digital',
+    themeDark: 'Theme: Dark', themeLight: 'Theme: Light',
+    digitWhite: 'Digit Color: White', digitYellow: 'Digit Color: Yellow',
+    digitLightblue: 'Digit Color: Light Blue', digitPink: 'Digit Color: Pink',
+    presentMode: 'Presentation Mode', presentModeExit: 'Exit Presentation Mode',
+    settingsOpen: 'Settings', settingsClose: 'Hide Settings ▲',
+    labelRemaining: 'Time Remaining', labelElapsed: 'Elapsed Time',
+    fullscreen: 'Fullscreen', fullscreenExit: 'Exit Fullscreen',
+    shortcutHint: 'Space: Start/Pause/Resume  /  Esc: Exit Fullscreen',
+    messagePlaceholder: 'Type a message…',
+  }
+};
+let lang = 'ja';
+
+let totalSeconds = 10 * 60;
+let warn1Seconds = 60;
+let warn2Seconds = 10;
+let remaining = totalSeconds;
+let running = false;
+let hasStarted = false;
+let intervalId = null;
+let firedWarn1 = false, firedWarn2 = false, firedEnd = false;
+let soundEnabled = false;
+let soundType = 'sine';
+let gaugeVisible = true;
+let clockFont = 'grotesk'; // 'grotesk' | 'mono' | 'digital'
+let theme = 'dark'; // 'dark' | 'light'
+let settingsCollapsed = true;
+let digitColor = 'white'; // 'white' | 'yellow' | 'lightblue' | 'pink'
+let mode = 'down'; // 'down' = カウントダウン, 'up' = カウントアップ
+let presentWin = null;
+let displayStyle = 'full'; // 'full' | 'simple' | 'timeonly'
+
+const clockEl = document.getElementById('clock');
+const fillEl = document.getElementById('progressFill');
+const stateEl = document.getElementById('stateLabel');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const presetsEl = document.getElementById('presets');
+const customHours = document.getElementById('customHours');
+const customMinutes = document.getElementById('customMinutes');
+const customSeconds = document.getElementById('customSeconds');
+const messageInput = document.getElementById('messageInput');
+const warn1Input = document.getElementById('warn1Input');
+const warn2Input = document.getElementById('warn2Input');
+const freeMessageInput = document.getElementById('freeMessageInput');
+const soundTypeSelect = document.getElementById('soundTypeSelect');
+const displayStyleSelect = document.getElementById('displayStyleSelect');
+const presentFsBtn = document.getElementById('presentFsBtn');
+const presentDiag = document.getElementById('presentDiag');
+const gaugeToggleSelect = document.getElementById('gaugeToggleSelect');
+const fontSelect = document.getElementById('fontSelect');
+const themeSelect = document.getElementById('themeSelect');
+const digitColorSelect = document.getElementById('digitColorSelect');
+const langSelect = document.getElementById('langSelect');
+
+// ---------- audio ----------
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function beep(freq, duration, delay) {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = soundType;
+  osc.frequency.value = freq;
+  gain.gain.value = 0.0001;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  const t0 = ctx.currentTime + delay;
+  gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  osc.start(t0);
+  osc.stop(t0 + duration + 0.02);
+}
+function chime(times, freq) {
+  if (!soundEnabled) return;
+  for (let i = 0; i < times; i++) beep(freq, 0.22, i * 0.32);
+}
+
+// ---------- time parsing ----------
+function parseMMSS(str) {
+  const s = str.trim();
+  const hms = s.match(/^(\d+):([0-5]?\d):([0-5]?\d)$/);
+  if (hms) {
+    return parseInt(hms[1], 10) * 3600 + parseInt(hms[2], 10) * 60 + parseInt(hms[3], 10);
+  }
+  const ms = s.match(/^(\d+):([0-5]?\d)$/);
+  if (ms) {
+    return parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10);
+  }
+  return null;
+}
+function formatMMSS(sec) {
+  const s = Math.max(0, sec);
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function formatTime(sec) {
+  const neg = sec < 0;
+  const abs = Math.abs(sec);
+  let str;
+  if (totalSeconds >= 3600) {
+    const h = Math.floor(abs / 3600);
+    const m = Math.floor((abs % 3600) / 60);
+    const s = abs % 60;
+    str = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  } else {
+    const m = Math.floor(abs / 60);
+    const s = abs % 60;
+    str = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+  return neg ? '-' + str : str;
+}
+
+
+// ---------- render ----------
+function render() {
+  clockEl.textContent = formatTime(remaining);
+  clockEl.classList.toggle('hh-format', totalSeconds >= 3600);
+  clockEl.classList.remove('warn', 'danger', 'over', 'standby');
+  fillEl.classList.remove('warn', 'danger');
+
+  if (!hasStarted) {
+    clockEl.classList.add('standby');
+    stateEl.textContent = I18N[lang].standby;
+    fillEl.style.width = '100%';
+    syncPresentWindow();
+    return;
+  }
+
+  stateEl.textContent = running ? I18N[lang].running : I18N[lang].paused;
+
+  const timeLeft = mode === 'down' ? remaining : totalSeconds - remaining;
+
+  if (timeLeft < 0) {
+    clockEl.classList.add('danger', 'over');
+    fillEl.classList.add('danger');
+    fillEl.style.width = '100%';
+  } else {
+    const ratio = totalSeconds > 0 ? timeLeft / totalSeconds : 0;
+    fillEl.style.width = (ratio * 100) + '%';
+    if (warn2Seconds > 0 && timeLeft <= warn2Seconds) {
+      clockEl.classList.add('danger');
+      fillEl.classList.add('danger');
+    } else if (warn1Seconds > 0 && timeLeft <= warn1Seconds) {
+      clockEl.classList.add('warn');
+      fillEl.classList.add('warn');
+    }
+  }
+  syncPresentWindow();
+}
+
+function tick() {
+  if (mode === 'down') remaining -= 1; else remaining += 1;
+  const timeLeft = mode === 'down' ? remaining : totalSeconds - remaining;
+  if (warn1Seconds > 0 && timeLeft === warn1Seconds && !firedWarn1) {
+    chime(1, 880); firedWarn1 = true;
+  }
+  if (warn2Seconds > 0 && timeLeft === warn2Seconds && !firedWarn2) {
+    chime(2, 740); firedWarn2 = true;
+  }
+  if (timeLeft === 0 && !firedEnd) {
+    chime(3, 600); firedEnd = true;
+  }
+  render();
+}
+
+function start() {
+  if (running) return;
+  getCtx();
+  running = true;
+  hasStarted = true;
+  startBtn.textContent = I18N[lang].pauseLabel;
+  startBtn.classList.add('running');
+  intervalId = setInterval(tick, 1000);
+  render();
+}
+function pause() {
+  running = false;
+  startBtn.textContent = I18N[lang].resume;
+  startBtn.classList.remove('running');
+  clearInterval(intervalId);
+  render();
+}
+function reset() {
+  pause();
+  hasStarted = false;
+  remaining = mode === 'down' ? totalSeconds : 0;
+  firedWarn1 = false; firedWarn2 = false; firedEnd = false;
+  startBtn.textContent = I18N[lang].start;
+  render();
+}
+function syncCustomSelects() {
+  const h = Math.min(3, Math.floor(totalSeconds / 3600));
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (customHours) customHours.value = String(h);
+  if (customMinutes) customMinutes.value = String(m);
+  if (customSeconds) customSeconds.value = String(s);
+}
+function setTotalSeconds(seconds) {
+  totalSeconds = seconds;
+  reset();
+  syncCustomSelects();
+  syncUrl();
+}
+
+startBtn.addEventListener('click', () => running ? pause() : start());
+resetBtn.addEventListener('click', reset);
+
+document.getElementById('plus1').addEventListener('click', () => { remaining += 60; hasStarted = true; render(); });
+document.getElementById('minus1').addEventListener('click', () => { remaining -= 60; hasStarted = true; render(); });
+
+presetsEl.querySelectorAll('button[data-sec]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    presetsEl.querySelectorAll('button[data-sec]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setTotalSeconds(Number(btn.dataset.sec));
+  });
+});
+function populateTimeSelect(el, max, pad) {
+  for (let i = 0; i <= max; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = pad ? String(i).padStart(2, '0') : String(i);
+    el.appendChild(opt);
+  }
+}
+populateTimeSelect(customHours, 3, false);
+populateTimeSelect(customMinutes, 59, true);
+populateTimeSelect(customSeconds, 59, true);
+
+function applyCustomTime() {
+  const h = Number(customHours.value);
+  const m = Number(customMinutes.value);
+  const s = Number(customSeconds.value);
+  let total = h * 3600 + m * 60 + s;
+  if (total <= 0) return;
+  if (total > 180 * 60) total = 180 * 60;
+  presetsEl.querySelectorAll('button[data-sec]').forEach(b => b.classList.remove('active'));
+  setTotalSeconds(total);
+}
+[customHours, customMinutes, customSeconds].forEach(el => {
+  el.addEventListener('change', applyCustomTime);
+});
+
+warn1Input.addEventListener('change', () => {
+  const v = parseMMSS(warn1Input.value);
+  if (v !== null) { warn1Seconds = v; firedWarn1 = false; syncUrl(); }
+  else warn1Input.value = formatMMSS(warn1Seconds);
+});
+warn2Input.addEventListener('change', () => {
+  const v = parseMMSS(warn2Input.value);
+  if (v !== null) { warn2Seconds = v; firedWarn2 = false; syncUrl(); }
+  else warn2Input.value = formatMMSS(warn2Seconds);
+});
+messageInput.addEventListener('input', syncUrl);
+document.getElementById('soundCheckBtn').addEventListener('click', () => {
+  getCtx();
+  beep(880, 0.22, 0);
+});
+
+soundTypeSelect.addEventListener('change', () => {
+  soundType = soundTypeSelect.value;
+  getCtx();
+  beep(880, 0.22, 0);
+});
+
+const soundToggleSelect = document.getElementById('soundToggleSelect');
+soundToggleSelect.addEventListener('change', () => {
+  getCtx();
+  soundEnabled = soundToggleSelect.value === 'on';
+});
+
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+function isPseudoFullscreen() {
+  return document.body.classList.contains('pseudo-fullscreen');
+}
+function updateFullscreenBtn() {
+  const isFs = !!document.fullscreenElement || isPseudoFullscreen();
+  fullscreenBtn.textContent = isFs ? I18N[lang].fullscreenExit : I18N[lang].fullscreen;
+  fullscreenBtn.style.display = isFs ? 'none' : '';
+}
+fullscreenBtn.addEventListener('click', () => {
+  if (document.fullscreenElement) {
+    document.exitFullscreen?.();
+    return;
+  }
+  if (isPseudoFullscreen()) {
+    document.body.classList.remove('pseudo-fullscreen');
+    updateFullscreenBtn();
+    return;
+  }
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) {
+    Promise.resolve(req.call(el)).catch(() => {
+      document.body.classList.add('pseudo-fullscreen');
+      updateFullscreenBtn();
+    });
+  } else {
+    // Fullscreen API未対応(iOS Safariなど) → 擬似フルスクリーンで代替
+    document.body.classList.add('pseudo-fullscreen');
+    updateFullscreenBtn();
+  }
+});
+document.addEventListener('fullscreenchange', updateFullscreenBtn);
+
+const modeSelect = document.getElementById('modeSelect');
+modeSelect.addEventListener('change', () => {
+  mode = modeSelect.value;
+  applyModeLabel();
+  reset();
+  syncUrl();
+});
+
+// ---------- display style ----------
+function applyDisplayStyle() {
+  document.body.classList.remove('style-full', 'style-simple', 'style-timeonly');
+  document.body.classList.add('style-' + displayStyle);
+  fitClock();
+}
+displayStyleSelect.addEventListener('change', () => {
+  displayStyle = displayStyleSelect.value;
+  applyDisplayStyle();
+  syncUrl();
+});
+
+// ---------- mode label (残り時間 / 経過時間) ----------
+function applyModeLabel() {
+  const known = ['残り'];
+  Object.values(I18N).forEach(d => { known.push(d.labelRemaining, d.labelElapsed); });
+  if (known.includes(messageInput.value.trim())) {
+    messageInput.value = mode === 'up' ? I18N[lang].labelElapsed : I18N[lang].labelRemaining;
+  }
+}
+
+// ---------- collapsible settings ----------
+const settingsToggleBtn = document.getElementById('settingsToggleBtn');
+function applySettingsCollapsed() {
+  document.body.classList.toggle('settings-collapsed', settingsCollapsed);
+  settingsToggleBtn.textContent = settingsCollapsed ? I18N[lang].settingsOpen : I18N[lang].settingsClose;
+}
+settingsToggleBtn.addEventListener('click', () => {
+  settingsCollapsed = !settingsCollapsed;
+  applySettingsCollapsed();
+  syncUrl();
+});
+
+// ---------- gauge visibility ----------
+function applyGaugeVisibility() {
+  document.body.classList.toggle('hide-gauge', !gaugeVisible);
+  gaugeToggleSelect.value = gaugeVisible ? 'on' : 'off';
+  fitClock();
+}
+gaugeToggleSelect.addEventListener('change', () => {
+  gaugeVisible = gaugeToggleSelect.value === 'on';
+  applyGaugeVisibility();
+  syncUrl();
+  syncPresentWindow();
+});
+
+// ---------- clock font ----------
+function applyClockFont() {
+  document.body.classList.remove('font-grotesk', 'font-mono', 'font-digital');
+  document.body.classList.add('font-' + clockFont);
+}
+fontSelect.addEventListener('change', () => {
+  clockFont = fontSelect.value;
+  applyClockFont();
+  syncUrl();
+  syncPresentWindow();
+});
+
+// ---------- background theme ----------
+function applyTheme() {
+  document.body.classList.toggle('theme-light', theme === 'light');
+  themeSelect.value = theme;
+}
+themeSelect.addEventListener('change', () => {
+  theme = themeSelect.value;
+  applyTheme();
+  syncUrl();
+  syncPresentWindow();
+});
+
+// ---------- digit color ----------
+function populateDigitColorOptions() {
+  const t = I18N[lang];
+  digitColorSelect.innerHTML = '';
+  [
+    { value: 'white', label: t.digitWhite },
+    { value: 'yellow', label: t.digitYellow },
+    { value: 'lightblue', label: t.digitLightblue },
+    { value: 'pink', label: t.digitPink },
+  ].forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    digitColorSelect.appendChild(opt);
+  });
+  digitColorSelect.value = digitColor;
+}
+function applyDigitColor() {
+  document.body.classList.remove('digit-white', 'digit-yellow', 'digit-lightblue', 'digit-pink');
+  document.body.classList.add('digit-' + digitColor);
+}
+digitColorSelect.addEventListener('change', () => {
+  digitColor = digitColorSelect.value;
+  applyDigitColor();
+  syncUrl();
+  syncPresentWindow();
+});
+
+// ---------- language ----------
+function applyLanguage() {
+  const t = I18N[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    if (t[key] !== undefined) el.placeholder = t[key];
+  });
+  // dynamic-state labels that data-i18n can't cover on its own
+  stateEl.textContent = !hasStarted ? t.standby : (running ? t.running : t.paused);
+  startBtn.textContent = !hasStarted ? t.start : (running ? t.pauseLabel : t.resume);
+  updateFullscreenBtn();
+  applyModeLabel();
+  applySettingsCollapsed();
+  populateDigitColorOptions();
+  applyDigitColor();
+  presentFsBtn.textContent = (presentWin && !presentWin.closed && presentWin.document.fullscreenElement)
+    ? t.presentModeExit : t.presentMode;
+  langSelect.value = lang;
+  document.documentElement.lang = lang;
+  syncPresentWindow();
+}
+langSelect.addEventListener('change', () => {
+  lang = langSelect.value;
+  applyLanguage();
+  syncUrl();
+});
+
+// ---------- presentation window (for extended display) ----------
+const PRESENT_WINDOW_HTML = `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>プレゼンタイマー</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=IBM+Plex+Mono:wght@500&family=Roboto+Mono:wght@700&family=Orbitron:wght@700&display=swap');
+:root{--bg:#000;--text:#F5F1E8;--text-dim:#9BA39C;--warn:#D9A441;--mid:#E2793A;--danger:#C1502E;--line:#3A413C;}
+body.theme-light{--bg:#FFFFFF;--text:#1B1F1D;--text-dim:#6B7268;--line:#D8D5CC;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;overflow:hidden;}
+.clock{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(90px,min(58vh,32vw),720px);line-height:1;font-variant-numeric:tabular-nums;color:var(--warn);letter-spacing:-0.02em;transition:color .4s ease;user-select:none;white-space:nowrap;}
+.clock.standby{color:var(--text-dim);}
+.clock.warn{color:var(--mid);}
+.clock.danger{color:var(--danger);}
+.clock.over{animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+.gauge{width:80%;max-width:760px;height:10px;background:var(--line);border-radius:5px;overflow:hidden;}
+.gaugeFill{height:100%;width:100%;background:var(--warn);transition:width 1s linear, background-color .4s ease;}
+.gaugeFill.warn{background:var(--mid);}
+.gaugeFill.danger{background:var(--danger);}
+.msg{font-size:44px;color:var(--text);text-align:center;max-width:82%;min-height:1.3em;white-space:pre-wrap;}
+.fsBtn{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:20px;padding:18px 32px;border-radius:8px;border:1px solid var(--line);background:#161616;color:var(--text);cursor:pointer;}
+.fsBtn:hover{border-color:var(--warn);}
+body:fullscreen .fsBtn{display:none;}
+body.font-mono .clock{font-family:'Roboto Mono',monospace;}
+body.font-digital .clock{font-family:'Orbitron',sans-serif;}
+body.digit-white .clock{color:#FFFFFF;}
+body.digit-yellow .clock{color:#D9A441;}
+body.digit-lightblue .clock{color:#5FC3E0;}
+body.digit-pink .clock{color:#E8759C;}
+body.theme-light.digit-white .clock{color:#000000;}
+body .clock.warn{color:var(--mid) !important;}
+body .clock.danger{color:var(--danger) !important;}
+.clock.hh-format{font-size:clamp(70px,min(58vh,21vw),560px);}
+</style></head>
+<body>
+<div class="clock standby" id="pClock">--:--</div>
+<div class="gauge" id="pGaugeWrap"><div class="gaugeFill" id="pGauge"></div></div>
+<div class="msg" id="pMsg"></div>
+<button class="fsBtn" id="pFsBtn">全画面表示</button>
+<script>
+document.getElementById('pFsBtn').addEventListener('click', function () {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen && document.exitFullscreen();
+  }
+});
+document.addEventListener('fullscreenchange', function () {
+  document.getElementById('pFsBtn').style.display = document.fullscreenElement ? 'none' : 'block';
+});
+<\/script>
+</body></html>`;
+
+async function openPresentWindow() {
+  let features = '';
+  let targetScreen = null;
+  let detectFailReason = '';
+
+  if (!window.isSecureContext) {
+    detectFailReason = 'HTTPS接続が必要です';
+  } else if (!('getScreenDetails' in window)) {
+    detectFailReason = 'このブラウザは非対応です(Chrome/Edge推奨)';
+  } else {
+    try {
+      const details = await window.getScreenDetails();
+      targetScreen = details.screens.find(s => s !== details.currentScreen) || null;
+      if (!targetScreen) {
+        detectFailReason = '拡張ディスプレイが見つかりません';
+      }
+    } catch (e) {
+      detectFailReason = '画面の管理が許可されていません';
+    }
+  }
+
+  if (detectFailReason) {
+    console.warn('[プレゼンテーションモード] 拡張ディスプレイ自動検出できず: ' + detectFailReason);
+    presentDiag.textContent = detectFailReason;
+    setTimeout(() => { presentDiag.textContent = ''; }, 5000);
+  } else {
+    presentDiag.textContent = '';
+  }
+
+  if (targetScreen) {
+    const w = Math.round(targetScreen.availWidth / 2);
+    const h = Math.round(targetScreen.availHeight / 2);
+    const left = Math.round(targetScreen.availLeft + (targetScreen.availWidth - w) / 2);
+    const top = Math.round(targetScreen.availTop + (targetScreen.availHeight - h) / 2);
+    features = `left=${left},top=${top},width=${w},height=${h}`;
+  } else {
+    // 拡張ディスプレイを検出できない場合、右側にもう1台あると仮定して
+    // 主ディスプレイの外側(画面幅の右)にウィンドウを開く簡易フォールバック
+    const screenW = window.screen.availWidth || 1000;
+    const screenH = window.screen.availHeight || 700;
+    const w = Math.round(screenW / 2);
+    const h = Math.round(screenH / 2);
+    const left = screenW + Math.round((screenW - w) / 2);
+    const top = Math.round((screenH - h) / 2);
+    features = `left=${left},top=${top},width=${w},height=${h}`;
+  }
+
+  presentWin = window.open('', 'presenterDisplay', features);
+  if (!presentWin) {
+    const orig = presentFsBtn.textContent;
+    presentFsBtn.textContent = 'ポップアップを許可してください';
+    setTimeout(() => { presentFsBtn.textContent = orig; }, 2200);
+    presentWin = null;
+    return;
+  }
+  presentWin.document.open();
+  presentWin.document.write(PRESENT_WINDOW_HTML);
+  presentWin.document.close();
+
+  presentWin.addEventListener('unload', () => {
+    presentFsBtn.textContent = I18N[lang].presentMode;
+  });
+  presentWin.document.addEventListener('fullscreenchange', () => {
+    presentFsBtn.textContent = presentWin.document.fullscreenElement
+      ? I18N[lang].presentModeExit : I18N[lang].presentMode;
+  });
+
+  presentWin.focus();
+
+  if (targetScreen) {
+    // 拡張ディスプレイを確実に検出できた場合のみ、そちらを自動的に全画面表示にする
+    try {
+      await presentWin.document.documentElement.requestFullscreen({ screen: targetScreen });
+    } catch (e) {
+      /* 拒否された場合は手動の全画面表示ボタンにフォールバック */
+    }
+  }
+
+  syncPresentWindow();
+}
+
+function syncPresentWindow() {
+  if (!presentWin || presentWin.closed) return;
+  let pClock, pGauge, pGaugeWrap, pMsg, pFsBtn;
+  try {
+    pClock = presentWin.document.getElementById('pClock');
+    pGauge = presentWin.document.getElementById('pGauge');
+    pGaugeWrap = presentWin.document.getElementById('pGaugeWrap');
+    pMsg = presentWin.document.getElementById('pMsg');
+    pFsBtn = presentWin.document.getElementById('pFsBtn');
+  } catch (e) { return; }
+  if (!pClock || !pGauge || !pMsg) return;
+  pClock.textContent = clockEl.textContent;
+  pClock.className = clockEl.className;
+  pGauge.style.width = fillEl.style.width;
+  pGauge.className = 'gaugeFill' +
+    (fillEl.classList.contains('danger') ? ' danger' : fillEl.classList.contains('warn') ? ' warn' : '');
+  if (pGaugeWrap) pGaugeWrap.style.display = gaugeVisible ? '' : 'none';
+  pMsg.textContent = freeMessageInput.value;
+  presentWin.document.body.className = 'font-' + clockFont +
+    (theme === 'light' ? ' theme-light' : '') +
+    ' digit-' + digitColor;
+  if (pFsBtn && !presentWin.document.fullscreenElement) {
+    pFsBtn.textContent = I18N[lang].fullscreen;
+  }
+}
+
+presentFsBtn.addEventListener('click', async () => {
+  if (!presentWin || presentWin.closed) {
+    await openPresentWindow();
+    if (!presentWin) return; // ポップアップがブロックされた場合
+  }
+  presentWin.focus();
+  try {
+    if (!presentWin.document.fullscreenElement) {
+      await presentWin.document.documentElement.requestFullscreen();
+    } else {
+      await presentWin.document.exitFullscreen();
+    }
+  } catch (e) {
+    presentDiag.textContent = '全画面表示を開始できませんでした。ポップアップ内をクリックしてからもう一度お試しください。';
+    setTimeout(() => { presentDiag.textContent = ''; }, 5000);
+  }
+});
+
+freeMessageInput.addEventListener('input', syncPresentWindow);
+
+// ---------- spacebar: start / pause ----------
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' && e.key !== ' ') return;
+  const el = document.activeElement;
+  const tag = el ? el.tagName : '';
+  const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable);
+  if (isEditable) return;
+  e.preventDefault();
+  running ? pause() : start();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (isPseudoFullscreen()) {
+    document.body.classList.remove('pseudo-fullscreen');
+    updateFullscreenBtn();
+  }
+  if (displayStyle === 'timeonly') {
+    displayStyle = 'full';
+    displayStyleSelect.value = 'full';
+    applyDisplayStyle();
+    syncUrl();
+  }
+});
+
+// ---------- URL persistence ----------
+function syncUrl() {
+  const params = new URLSearchParams();
+  params.set('total', totalSeconds);
+  params.set('warn1', formatMMSS(warn1Seconds));
+  params.set('warn2', formatMMSS(warn2Seconds));
+  params.set('msg', messageInput.value);
+  params.set('mode', mode);
+  params.set('style', displayStyle);
+  params.set('gauge', gaugeVisible ? '1' : '0');
+  params.set('font', clockFont);
+  params.set('theme', theme);
+  params.set('digitcolor', digitColor);
+  params.set('lang', lang);
+  params.set('panel', settingsCollapsed ? '0' : '1');
+  const hash = '#' + params.toString();
+  history.replaceState(null, '', hash);
+}
+
+function loadFromUrl() {
+  if (!window.location.hash) {
+    applyDisplayStyle(); applyGaugeVisibility(); applyClockFont(); applyTheme(); applyLanguage();
+    syncCustomSelects();
+    syncUrl();
+    return;
+  }
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const total = Number(params.get('total'));
+  const w1 = parseMMSS(params.get('warn1') || '');
+  const w2 = parseMMSS(params.get('warn2') || '');
+  const msg = params.get('msg');
+  const m = params.get('mode');
+  const style = params.get('style');
+  const gauge = params.get('gauge');
+  const font = params.get('font');
+  const th = params.get('theme');
+  const lg = params.get('lang');
+  const dc = params.get('digitcolor');
+  const panel = params.get('panel');
+
+  if (lg === 'ja' || lg === 'en') {
+    lang = lg;
+  }
+  if (panel === '0' || panel === '1') {
+    settingsCollapsed = panel === '0';
+  }
+
+  if (total > 0 && total <= 180 * 60) {
+    totalSeconds = total;
+    presetsEl.querySelectorAll('button[data-sec]').forEach(b =>
+      b.classList.toggle('active', Number(b.dataset.sec) === total));
+  }
+  if (w1 !== null) warn1Seconds = w1;
+  if (w2 !== null) warn2Seconds = w2;
+  if (msg) messageInput.value = msg;
+  if (m === 'up' || m === 'down') {
+    mode = m;
+    modeSelect.value = mode;
+  }
+  if (style === 'full' || style === 'simple' || style === 'timeonly') {
+    displayStyle = style;
+    displayStyleSelect.value = style;
+  }
+  if (gauge === '0' || gauge === '1') {
+    gaugeVisible = gauge === '1';
+  }
+  if (font === 'grotesk' || font === 'mono' || font === 'digital') {
+    clockFont = font;
+    fontSelect.value = font;
+  }
+  if (th === 'dark' || th === 'light') {
+    theme = th;
+  }
+  if (dc === 'white' || dc === 'yellow' || dc === 'lightblue' || dc === 'pink') {
+    digitColor = dc;
+  }
+  applyDisplayStyle();
+  applyGaugeVisibility();
+  applyClockFont();
+  applyTheme();
+  applyLanguage();
+
+  warn1Input.value = formatMMSS(warn1Seconds);
+  warn2Input.value = formatMMSS(warn2Seconds);
+  remaining = mode === 'down' ? totalSeconds : 0;
+  syncCustomSelects();
+  syncUrl();
+}
+
+// ---------- keep the clock inside the space that is really available ----------
+const timerContent = document.getElementById('timerContent');
+const settingsSectionEl = document.querySelector('.settings-section');
+function fitClock() {
+  const sec = timerContent.parentElement;
+  const cs = getComputedStyle(sec);
+  const settingsH = settingsSectionEl.offsetParent === null ? 0 : settingsSectionEl.offsetHeight;
+  const avail = window.innerHeight - settingsH - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const nonClock = timerContent.offsetHeight - clockEl.offsetHeight;
+  document.documentElement.style.setProperty('--fit-h', Math.max(24, Math.floor(avail - nonClock - 2)) + 'px');
+}
+window.addEventListener('resize', fitClock);
+if ('ResizeObserver' in window) new ResizeObserver(fitClock).observe(settingsSectionEl);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitClock);
+
+loadFromUrl();
+render();
+fitClock();
+</script>
+
+</body>
+</html>
