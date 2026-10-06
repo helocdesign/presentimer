@@ -472,6 +472,25 @@ body.style-timeonly .app-title { display: none; }
   width: 100%;
 }
 .bottom-row .shortcut-hint { width: auto; }
+.manual-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.manual-btn:hover { border-color: var(--ok); }
+.manual-btn:active { transform: scale(0.97); }
 .shortcut-hint {
   width: 100%;
   font-size: 12px;
@@ -505,6 +524,7 @@ select {
   .presets button, .footer-row button { font-size: 11px; padding: 7px 10px; }
   .custom-set select, .time-input { font-size: 13px; }
   .shortcut-hint { font-size: 10px; }
+  .manual-btn { font-size: 12px; padding: 0 14px; }
 }
 </style>
 </head>
@@ -640,6 +660,7 @@ select {
     <div class="bottom-row">
       <button id="settingsToggleBtn" class="settings-toggle-btn">詳細設定</button>
       <div class="shortcut-hint" id="shortcutHint" data-i18n="shortcutHint">Space:開始・一時停止・再開　/　Esc:全画面表示解除</div>
+      <a id="manualLink" class="manual-btn" href="https://helocdesign.github.io/presentimer/manual" target="_blank" rel="noopener noreferrer" data-i18n="manualBtn">説明書</a>
     </div>
 
   </div>
@@ -670,6 +691,7 @@ const I18N = {
     presentMode: 'プレゼンテーションモード', presentModeExit: 'プレゼンテーションモードを解除',
     settingsOpen: '詳細設定', settingsClose: '詳細設定を閉じる ▲',
     labelRemaining: '残り時間', labelElapsed: '経過時間',
+    manualBtn: '説明書',
     fullscreen: '全画面表示', fullscreenExit: '全画面表示を解除',
     shortcutHint: 'Space:開始・一時停止・再開　/　Esc:全画面表示解除',
     messagePlaceholder: 'ここにメッセージを入力…',
@@ -695,6 +717,7 @@ const I18N = {
     presentMode: 'Presentation Mode', presentModeExit: 'Exit Presentation Mode',
     settingsOpen: 'Settings', settingsClose: 'Hide Settings ▲',
     labelRemaining: 'Time Remaining', labelElapsed: 'Elapsed Time',
+    manualBtn: 'Manual',
     fullscreen: 'Fullscreen', fullscreenExit: 'Exit Fullscreen',
     shortcutHint: 'Space: Start/Pause/Resume  /  Esc: Exit Fullscreen',
     messagePlaceholder: 'Type a message…',
