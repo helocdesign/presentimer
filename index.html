@@ -111,7 +111,7 @@ body {
 .clock {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  font-size: clamp(28px, min(var(--fit-h, 58vh), 24vw), 560px);
+  font-size: clamp(28px, min(var(--fit-h, 58vh), 24vw, var(--fit-w, 24vw)), 560px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--warn);
@@ -121,7 +121,7 @@ body {
   white-space: nowrap;
 }
 .clock.standby { color: var(--text-dim); }
-.clock.hh-format { font-size: clamp(24px, min(var(--fit-h, 58vh), 15vw), 560px); }
+.clock.hh-format { font-size: clamp(24px, min(var(--fit-h, 58vh), 24vw, var(--fit-w, 15vw)), 560px); }
 .clock.warn { color: var(--mid); }
 .clock.danger { color: var(--danger); }
 .clock.over { animation: pulse 1s ease-in-out infinite; }
@@ -237,10 +237,10 @@ body.style-timeonly .progress-track,
 body.style-timeonly .message-box { display: none; }
 
 body.style-timeonly .clock {
-  font-size: clamp(36px, min(var(--fit-h, 65vh), 34vw), 720px);
+  font-size: clamp(36px, min(var(--fit-h, 65vh), 34vw, var(--fit-w, 34vw)), 720px);
 }
 body.style-timeonly .clock.hh-format {
-  font-size: clamp(30px, min(var(--fit-h, 65vh), 22vw), 560px);
+  font-size: clamp(30px, min(var(--fit-h, 65vh), 34vw, var(--fit-w, 22vw)), 560px);
 }
 
 body.style-timeonly .settings-section { display: none; }
@@ -698,7 +698,7 @@ select {
     <div class="bottom-row">
       <button id="settingsToggleBtn" class="settings-toggle-btn">詳細設定</button>
       <div class="shortcut-hint" id="shortcutHint" data-i18n="shortcutHint">Space:開始・一時停止・再開　/　Esc:全画面表示解除</div>
-      <a id="manualLink" class="manual-btn" href="https://helocdesign.github.io/presentimer/manual" target="_blank" rel="noopener noreferrer" data-i18n="manualBtn">説明書</a>
+      <a id="manualLink" class="manual-btn" href="https://timer.helocdesign.net/manual" target="_blank" rel="noopener noreferrer" data-i18n="manualBtn">説明書</a>
     </div>
 
   </div>
@@ -870,9 +870,11 @@ function formatTime(sec) {
 
 
 // ---------- render ----------
+let renderedLen = 0;
 function render() {
   clockEl.textContent = formatTime(remaining);
   clockEl.classList.toggle('hh-format', totalSeconds >= 3600);
+  if (clockEl.textContent.length !== renderedLen) { renderedLen = clockEl.textContent.length; if (typeof fitClock === 'function') fitClock(); }
   clockEl.classList.remove('warn', 'danger', 'over', 'standby');
   fillEl.classList.remove('warn', 'danger');
 
@@ -1122,6 +1124,7 @@ gaugeToggleSelect.addEventListener('change', () => {
 function applyClockFont() {
   document.body.classList.remove('font-grotesk', 'font-mono', 'font-digital');
   document.body.classList.add('font-' + clockFont);
+  if (typeof fitClock === 'function') fitClock();
 }
 fontSelect.addEventListener('change', () => {
   clockFont = fontSelect.value;
@@ -1196,7 +1199,7 @@ function applyLanguage() {
   langSelect.value = lang;
   document.documentElement.lang = lang;
   // open the manual in the same language as the app
-  document.getElementById('manualLink').href = 'https://helocdesign.github.io/presentimer/manual?lang=' + lang;
+  document.getElementById('manualLink').href = 'https://timer.helocdesign.net/manual?lang=' + lang;
   syncPresentWindow();
 }
 langSelect.addEventListener('change', () => {
@@ -1214,7 +1217,7 @@ const PRESENT_WINDOW_HTML = `<!DOCTYPE html>
 body.theme-light{--bg:#FFFFFF;--text:#1B1F1D;--text-dim:#6B7268;--line:#D8D5CC;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;overflow:hidden;}
-.clock{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(90px,min(58vh,32vw),720px);line-height:1;font-variant-numeric:tabular-nums;color:var(--warn);letter-spacing:-0.02em;transition:color .4s ease;user-select:none;white-space:nowrap;}
+.clock{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(90px,min(58vh,32vw,var(--fit-w,32vw)),720px);line-height:1;font-variant-numeric:tabular-nums;color:var(--warn);letter-spacing:-0.02em;transition:color .4s ease;user-select:none;white-space:nowrap;}
 .clock.standby{color:var(--text-dim);}
 .clock.warn{color:var(--mid);}
 .clock.danger{color:var(--danger);}
@@ -1237,7 +1240,7 @@ body.digit-pink .clock{color:#E8759C;}
 body.theme-light.digit-white .clock{color:#000000;}
 body .clock.warn{color:var(--mid) !important;}
 body .clock.danger{color:var(--danger) !important;}
-.clock.hh-format{font-size:clamp(70px,min(58vh,21vw),560px);}
+.clock.hh-format{font-size:clamp(70px,min(58vh,32vw,var(--fit-w,21vw)),560px);}
 </style></head>
 <body>
 <div class="clock standby" id="pClock">--:--</div>
@@ -1255,6 +1258,19 @@ document.getElementById('pFsBtn').addEventListener('click', function () {
 document.addEventListener('fullscreenchange', function () {
   document.getElementById('pFsBtn').style.display = document.fullscreenElement ? 'none' : 'block';
 });
+(function () {
+  var c = document.getElementById('pClock');
+  function fit() {
+    var r = document.createRange(); r.selectNodeContents(c);
+    var w = r.getBoundingClientRect().width;
+    var fs = parseFloat(getComputedStyle(c).fontSize);
+    if (w > 0 && fs > 0) document.documentElement.style.setProperty('--fit-w', Math.max(20, Math.floor(fs * document.documentElement.clientWidth * 0.94 / w)) + 'px');
+  }
+  new MutationObserver(fit).observe(c, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(fit).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('resize', fit);
+  fit();
+})();
 <\/script>
 </body></html>`;
 
@@ -1573,6 +1589,17 @@ function fitClock() {
   const avail = window.innerHeight - settingsH - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   const nonClock = timerContent.offsetHeight - clockEl.offsetHeight;
   document.documentElement.style.setProperty('--fit-h', Math.max(24, Math.floor(avail - nonClock - 2)) + 'px');
+  fitClockWidth();
+}
+// hh:mm:ss is wider than mm:ss: measure the real text and keep it inside the window (works for every font)
+function fitClockWidth() {
+  const range = document.createRange();
+  range.selectNodeContents(clockEl);
+  const textW = range.getBoundingClientRect().width;
+  const fs = parseFloat(getComputedStyle(clockEl).fontSize);
+  if (textW > 0 && fs > 0) {
+    document.documentElement.style.setProperty('--fit-w', Math.max(20, Math.floor(fs * document.documentElement.clientWidth * 0.94 / textW)) + 'px');
+  }
 }
 window.addEventListener('resize', fitClock);
 if ('ResizeObserver' in window) new ResizeObserver(fitClock).observe(settingsSectionEl);
