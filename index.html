@@ -1195,6 +1195,8 @@ function applyLanguage() {
     ? t.presentModeExit : t.presentMode;
   langSelect.value = lang;
   document.documentElement.lang = lang;
+  // open the manual in the same language as the app
+  document.getElementById('manualLink').href = 'https://helocdesign.github.io/presentimer/manual?lang=' + lang;
   syncPresentWindow();
 }
 langSelect.addEventListener('change', () => {
