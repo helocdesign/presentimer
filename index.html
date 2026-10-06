@@ -226,7 +226,7 @@ body.settings-collapsed .collapsible-settings { display: none; }
   color: var(--text-dim);
 }
 
-.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; flex: 1 1 260px; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; flex: 1 1 auto; }
 
 body.style-simple .message-input,
 body.style-simple .message-box { display: none; }
@@ -339,7 +339,8 @@ body.pseudo-fullscreen {
   gap: 8px;
   justify-content: center;
   align-content: flex-start;
-  flex: 1 1 300px;
+  align-items: center;
+  flex: 1 1 auto;
 }
 .presets button { padding: 7px 12px; font-size: 12px; color: var(--text-dim); }
 .presets button.active { border-color: var(--ok); color: var(--text); }
@@ -350,6 +351,8 @@ body.pseudo-fullscreen {
   padding-left: 6px;
   padding-right: 6px;
   font-size: 14px;
+  text-align: center;
+  text-align-last: center;
 }
 .custom-set span { color: var(--text-dim); font-size: 12px; }
 
@@ -472,6 +475,31 @@ body.style-timeonly .app-title { display: none; }
   width: 100%;
 }
 .bottom-row .shortcut-hint { width: auto; }
+
+/* first row: keep controls, memory buttons and time setting on one line where possible */
+.tier-main { gap: 12px; }
+
+/* memory buttons */
+.memory-buttons { display: flex; gap: 6px; align-items: center; justify-content: center; flex: 0 0 auto; }
+.mem-btn {
+  flex-direction: column;
+  gap: 1px;
+  min-width: 66px;
+  padding-left: 6px;
+  padding-right: 6px;
+  line-height: 1.15;
+  color: var(--text);
+}
+.mem-btn .mem-name { font-size: 10px; color: var(--text-dim); }
+.mem-btn .mem-time { font-size: 13px; font-variant-numeric: tabular-nums; }
+.mem-btn.empty .mem-time { font-size: 11px; color: var(--text-dim); }
+.mem-btn.active { border-color: var(--ok); }
+.mem-btn.saved { border-color: var(--warn); background: var(--accent-tint); }
+.memory-set { display: flex; gap: 6px; align-items: center; }
+.memory-set select,
+.memory-set button { box-sizing: border-box; width: 64px; height: 40px; font-size: 12px; white-space: nowrap; }
+.memory-set select { padding-left: 8px; padding-right: 8px; text-align: center; text-align-last: center; }
+.memory-set button { padding-left: 0; padding-right: 0; }
 .manual-btn {
   display: inline-flex;
   align-items: center;
@@ -561,7 +589,7 @@ select {
 
   <div class="controls-row">
 
-    <div class="settings-tier">
+    <div class="settings-tier tier-main">
       <div class="controls">
         <button id="resetBtn" data-i18n="reset">リセット</button>
         <button class="primary" id="startBtn" data-i18n="start">開始</button>
@@ -569,6 +597,12 @@ select {
           <button id="minus1" data-i18n="minus1">-1分</button>
           <button id="plus1" data-i18n="plus1">+1分</button>
         </div>
+      </div>
+
+      <div class="memory-buttons" id="memoryButtons">
+        <button type="button" class="mem-btn" data-slot="0"><span class="mem-name">M1</span><span class="mem-time">未設定</span></button>
+        <button type="button" class="mem-btn" data-slot="1"><span class="mem-name">M2</span><span class="mem-time">未設定</span></button>
+        <button type="button" class="mem-btn" data-slot="2"><span class="mem-name">M3</span><span class="mem-time">未設定</span></button>
       </div>
 
       <div class="presets" id="presets">
@@ -579,6 +613,10 @@ select {
           <span>:</span>
           <select id="customSeconds"></select>
           <span data-i18n="setTo">に設定</span>
+        </div>
+        <div class="memory-set">
+          <select id="memorySlotSelect"></select>
+          <button type="button" id="memorySaveBtn" data-i18n="memSave">登録</button>
         </div>
       </div>
     </div>
@@ -692,6 +730,7 @@ const I18N = {
     settingsOpen: '詳細設定', settingsClose: '詳細設定を閉じる ▲',
     labelRemaining: '残り時間', labelElapsed: '経過時間',
     manualBtn: '説明書',
+    memName: 'M', memNone: '未設定', memSave: '登録', memEmptyTip: '右の「登録」で、いまの時間を登録できます',
     fullscreen: '全画面表示', fullscreenExit: '全画面表示を解除',
     shortcutHint: 'Space:開始・一時停止・再開　/　Esc:全画面表示解除',
     messagePlaceholder: 'ここにメッセージを入力…',
@@ -718,6 +757,7 @@ const I18N = {
     settingsOpen: 'Settings', settingsClose: 'Hide Settings ▲',
     labelRemaining: 'Time Remaining', labelElapsed: 'Elapsed Time',
     manualBtn: 'Manual',
+    memName: 'M', memNone: 'Not set', memSave: 'Save', memEmptyTip: 'Use Save on the right to store the current time',
     fullscreen: 'Fullscreen', fullscreenExit: 'Exit Fullscreen',
     shortcutHint: 'Space: Start/Pause/Resume  /  Esc: Exit Fullscreen',
     messagePlaceholder: 'Type a message…',
@@ -918,6 +958,7 @@ function setTotalSeconds(seconds) {
   totalSeconds = seconds;
   reset();
   syncCustomSelects();
+  renderMemories();
   syncUrl();
 }
 
@@ -1148,6 +1189,8 @@ function applyLanguage() {
   applySettingsCollapsed();
   populateDigitColorOptions();
   applyDigitColor();
+  populateMemSlotOptions();
+  renderMemories();
   presentFsBtn.textContent = (presentWin && !presentWin.closed && presentWin.document.fullscreenElement)
     ? t.presentModeExit : t.presentMode;
   langSelect.value = lang;
@@ -1379,6 +1422,7 @@ function syncUrl() {
   params.set('theme', theme);
   params.set('digitcolor', digitColor);
   params.set('lang', lang);
+  if (memories.some(Boolean)) params.set('mem', memories.map(v => v || '').join(','));
   params.set('panel', settingsCollapsed ? '0' : '1');
   const hash = '#' + params.toString();
   history.replaceState(null, '', hash);
@@ -1386,12 +1430,15 @@ function syncUrl() {
 
 function loadFromUrl() {
   if (!window.location.hash) {
+    memories = loadMemoriesFromStorage();
     applyDisplayStyle(); applyGaugeVisibility(); applyClockFont(); applyTheme(); applyLanguage();
     syncCustomSelects();
     syncUrl();
     return;
   }
   const params = new URLSearchParams(window.location.hash.slice(1));
+  const memParam = params.get('mem');
+  memories = memParam !== null ? parseMemParam(memParam) : loadMemoriesFromStorage();
   const total = Number(params.get('total'));
   const w1 = parseMMSS(params.get('warn1') || '');
   const w2 = parseMMSS(params.get('warn2') || '');
@@ -1453,6 +1500,66 @@ function loadFromUrl() {
   syncCustomSelects();
   syncUrl();
 }
+
+// ---------- memory buttons (3 stored times) ----------
+const MEM_KEY = 'presenTimerMemories';
+const memBtns = Array.from(document.querySelectorAll('.mem-btn'));
+const memSlotSelect = document.getElementById('memorySlotSelect');
+const memSaveBtn = document.getElementById('memorySaveBtn');
+let memories = [null, null, null];
+function validMem(v) { v = Number(v); return Number.isInteger(v) && v >= 1 && v <= 180 * 60 ? v : null; }
+function parseMemParam(str) { const parts = String(str).split(','); return [0, 1, 2].map(i => validMem(parts[i])); }
+function loadMemoriesFromStorage() {
+  try {
+    const a = JSON.parse(localStorage.getItem(MEM_KEY) || 'null');
+    if (Array.isArray(a)) return [0, 1, 2].map(i => validMem(a[i]));
+  } catch (e) { /* storage unavailable: start empty */ }
+  return [null, null, null];
+}
+function persistMemories() {
+  try { localStorage.setItem(MEM_KEY, JSON.stringify(memories)); } catch (e) { /* ignore */ }
+}
+function fmtMem(sec) {
+  const p = n => String(n).padStart(2, '0');
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h > 0 ? `${p(h)}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+function renderMemories() {
+  const t = I18N[lang];
+  memBtns.forEach((b, i) => {
+    const sec = memories[i];
+    b.querySelector('.mem-name').textContent = t.memName + (i + 1);
+    b.querySelector('.mem-time').textContent = sec ? fmtMem(sec) : t.memNone;
+    b.classList.toggle('empty', !sec);
+    b.classList.toggle('active', !!sec && sec === totalSeconds);
+    b.title = sec ? '' : t.memEmptyTip;
+  });
+}
+function populateMemSlotOptions() {
+  const cur = memSlotSelect.value || '0';
+  memSlotSelect.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const o = document.createElement('option');
+    o.value = String(i);
+    o.textContent = I18N[lang].memName + (i + 1);
+    memSlotSelect.appendChild(o);
+  }
+  memSlotSelect.value = cur;
+}
+memBtns.forEach(b => b.addEventListener('click', () => {
+  const sec = memories[Number(b.dataset.slot)];
+  if (sec) setTotalSeconds(sec);
+}));
+memSaveBtn.addEventListener('click', () => {
+  const i = Number(memSlotSelect.value);
+  memories[i] = validMem(totalSeconds);
+  persistMemories();
+  renderMemories();
+  syncUrl();
+  const b = memBtns[i];
+  b.classList.add('saved');
+  setTimeout(() => b.classList.remove('saved'), 700);
+});
 
 // ---------- keep the clock inside the space that is really available ----------
 const timerContent = document.getElementById('timerContent');
