@@ -610,7 +610,7 @@ select {
 
 <button id="fullscreenBtn" class="fs-corner-btn">全画面表示</button>
 
-<span id="presentDiag" class="present-diag"></span>
+
 
 <div class="timer-section">
 <div class="timer-content" id="timerContent">
@@ -757,7 +757,7 @@ select {
     </div><!-- /collapsibleSettings -->
 
     <div class="bottom-row">
-      <button id="presentFsBtn" class="present-mode-btn" data-i18n="presentMode">拡張モニター</button>
+
       <div class="shortcut-hint" id="shortcutHint" data-i18n="shortcutHint">Space:開始・一時停止・再開　/　Esc:全画面表示解除</div>
       <button id="settingsToggleBtn" class="settings-toggle-btn">詳細設定</button>
       <a id="manualLink" class="manual-btn" href="https://timer.helocdesign.net/manual" target="_blank" rel="noopener noreferrer" data-i18n="manualBtn">説明書</a>
@@ -847,7 +847,7 @@ let digitColor = 'white'; // 'white' | 'yellow' | 'lightblue' | 'pink'
 let mode = 'down'; // 'down' = カウントダウン, 'up' = カウントアップ
 let modeKind = 'down2'; // 'down1' = 色変化なし, 'down2' = 警告表示あり(5分で黄色/1分で赤), 'up' = カウントアップ
 function setModeKind(k) { modeKind = k; mode = k === 'up' ? 'up' : 'down'; }
-let presentWin = null;
+
 let displayStyle = 'full'; // 'full' | 'simple' | 'timeonly'
 
 const clockEl = document.getElementById('clock');
@@ -865,8 +865,6 @@ const warn2Input = document.getElementById('warn2Input');
 const freeMessageInput = document.getElementById('freeMessageInput');
 const soundTypeSelect = document.getElementById('soundTypeSelect');
 const displayStyleSelect = document.getElementById('displayStyleSelect');
-const presentFsBtn = document.getElementById('presentFsBtn');
-const presentDiag = document.getElementById('presentDiag');
 const gaugeToggleSelect = document.getElementById('gaugeToggleSelect');
 const fontSelect = document.getElementById('fontSelect');
 const themeSelect = document.getElementById('themeSelect');
@@ -1288,8 +1286,6 @@ function applyLanguage() {
   applyDigitColor();
   populateMemSlotOptions();
   renderMemories();
-  presentFsBtn.textContent = (presentWin && !presentWin.closed && presentWin.document.fullscreenElement)
-    ? t.presentModeExit : t.presentMode;
   langSelect.value = lang;
   document.documentElement.lang = lang;
   // open the manual in the same language as the app
@@ -1302,201 +1298,8 @@ langSelect.addEventListener('change', () => {
   syncUrl();
 });
 
-// ---------- presentation window (for extended display) ----------
-const PRESENT_WINDOW_HTML = `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="UTF-8"><title>プレゼンタイマー</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=IBM+Plex+Mono:wght@500&family=Roboto+Mono:wght@700&family=Orbitron:wght@700&display=swap');
-:root{--bg:#000;--text:#F5F1E8;--text-dim:#9BA39C;--warn:#D9A441;--mid:#E2793A;--danger:#C1502E;--line:#3A413C;}
-body.theme-light{--bg:#FFFFFF;--text:#1B1F1D;--text-dim:#6B7268;--line:#D8D5CC;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;overflow:hidden;}
-.clock{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(90px,min(58vh,32vw,var(--fit-w,32vw)),720px);line-height:1;font-variant-numeric:tabular-nums;color:var(--warn);letter-spacing:-0.02em;transition:color .4s ease;user-select:none;white-space:nowrap;}
-.clock.standby{color:var(--text-dim);}
-.clock.warn{color:var(--mid);}
-.clock.caution{color:var(--warn);}
-.clock.danger{color:var(--danger);}
-.clock.over{animation:pulse 1s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
-.gauge{width:80%;max-width:760px;height:10px;background:var(--line);border-radius:5px;overflow:hidden;}
-.gaugeFill{height:100%;width:100%;background:var(--warn);transition:width 1s linear, background-color .4s ease;}
-.gaugeFill.warn{background:var(--mid);}
-.gaugeFill.caution{background:var(--warn);}
-.gaugeFill.danger{background:var(--danger);}
-.msg{font-size:44px;color:var(--text);text-align:center;max-width:82%;min-height:1.3em;white-space:pre-wrap;}
-.fsBtn{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:20px;padding:18px 32px;border-radius:8px;border:1px solid var(--line);background:#161616;color:var(--text);cursor:pointer;}
-.fsBtn:hover{border-color:var(--warn);}
-body:fullscreen .fsBtn{display:none;}
-body.font-mono .clock{font-family:'Roboto Mono',monospace;}
-body.font-digital .clock{font-family:'Orbitron',sans-serif;}
-body.digit-white .clock{color:#FFFFFF;}
-body.digit-yellow .clock{color:#D9A441;}
-body.digit-lightblue .clock{color:#5FC3E0;}
-body.digit-pink .clock{color:#E8759C;}
-body.theme-light.digit-white .clock{color:#000000;}
-body .clock.warn{color:var(--mid) !important;}
-body .clock.caution{color:var(--warn) !important;}
-body .clock.danger{color:var(--danger) !important;}
-.clock.hh-format{font-size:clamp(70px,min(58vh,32vw,var(--fit-w,21vw)),560px);}
-</style></head>
-<body>
-<div class="clock standby" id="pClock">--:--</div>
-<div class="gauge" id="pGaugeWrap"><div class="gaugeFill" id="pGauge"></div></div>
-<div class="msg" id="pMsg"></div>
-<button class="fsBtn" id="pFsBtn">全画面表示</button>
-<script>
-document.getElementById('pFsBtn').addEventListener('click', function () {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
-  } else {
-    document.exitFullscreen && document.exitFullscreen();
-  }
-});
-document.addEventListener('fullscreenchange', function () {
-  document.getElementById('pFsBtn').style.display = document.fullscreenElement ? 'none' : 'block';
-});
-(function () {
-  var c = document.getElementById('pClock');
-  function fit() {
-    var r = document.createRange(); r.selectNodeContents(c);
-    var w = r.getBoundingClientRect().width;
-    var fs = parseFloat(getComputedStyle(c).fontSize);
-    if (w > 0 && fs > 0) document.documentElement.style.setProperty('--fit-w', Math.max(20, Math.floor(fs * document.documentElement.clientWidth * 0.94 / w)) + 'px');
-  }
-  new MutationObserver(fit).observe(c, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-  new MutationObserver(fit).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  window.addEventListener('resize', fit);
-  fit();
-})();
-<\/script>
-</body></html>`;
-
-async function openPresentWindow() {
-  let features = '';
-  let targetScreen = null;
-  let detectFailReason = '';
-
-  if (!window.isSecureContext) {
-    detectFailReason = 'HTTPS接続が必要です';
-  } else if (!('getScreenDetails' in window)) {
-    detectFailReason = 'このブラウザは非対応です(Chrome/Edge推奨)';
-  } else {
-    try {
-      const details = await window.getScreenDetails();
-      targetScreen = details.screens.find(s => s !== details.currentScreen) || null;
-      if (!targetScreen) {
-        detectFailReason = '拡張ディスプレイが見つかりません';
-      }
-    } catch (e) {
-      detectFailReason = '画面の管理が許可されていません';
-    }
-  }
-
-  if (detectFailReason) {
-    console.warn('[プレゼンテーションモード] 拡張ディスプレイ自動検出できず: ' + detectFailReason);
-    presentDiag.textContent = detectFailReason;
-    setTimeout(() => { presentDiag.textContent = ''; }, 5000);
-  } else {
-    presentDiag.textContent = '';
-  }
-
-  if (targetScreen) {
-    const w = Math.round(targetScreen.availWidth / 2);
-    const h = Math.round(targetScreen.availHeight / 2);
-    const left = Math.round(targetScreen.availLeft + (targetScreen.availWidth - w) / 2);
-    const top = Math.round(targetScreen.availTop + (targetScreen.availHeight - h) / 2);
-    features = `left=${left},top=${top},width=${w},height=${h}`;
-  } else {
-    // 拡張ディスプレイを検出できない場合、右側にもう1台あると仮定して
-    // 主ディスプレイの外側(画面幅の右)にウィンドウを開く簡易フォールバック
-    const screenW = window.screen.availWidth || 1000;
-    const screenH = window.screen.availHeight || 700;
-    const w = Math.round(screenW / 2);
-    const h = Math.round(screenH / 2);
-    const left = screenW + Math.round((screenW - w) / 2);
-    const top = Math.round((screenH - h) / 2);
-    features = `left=${left},top=${top},width=${w},height=${h}`;
-  }
-
-  presentWin = window.open('', 'presenterDisplay', features);
-  if (!presentWin) {
-    const orig = presentFsBtn.textContent;
-    presentFsBtn.textContent = 'ポップアップを許可してください';
-    setTimeout(() => { presentFsBtn.textContent = orig; }, 2200);
-    presentWin = null;
-    return;
-  }
-  presentWin.document.open();
-  presentWin.document.write(PRESENT_WINDOW_HTML);
-  presentWin.document.close();
-
-  presentWin.addEventListener('unload', () => {
-    presentFsBtn.textContent = I18N[lang].presentMode;
-  });
-  presentWin.document.addEventListener('fullscreenchange', () => {
-    presentFsBtn.textContent = presentWin.document.fullscreenElement
-      ? I18N[lang].presentModeExit : I18N[lang].presentMode;
-  });
-
-  presentWin.focus();
-
-  if (targetScreen) {
-    // 拡張ディスプレイを確実に検出できた場合のみ、そちらを自動的に全画面表示にする
-    try {
-      await presentWin.document.documentElement.requestFullscreen({ screen: targetScreen });
-    } catch (e) {
-      /* 拒否された場合は手動の全画面表示ボタンにフォールバック */
-    }
-  }
-
-  syncPresentWindow();
-}
-
-function syncPresentWindow() {
-  if (!presentWin || presentWin.closed) return;
-  let pClock, pGauge, pGaugeWrap, pMsg, pFsBtn;
-  try {
-    pClock = presentWin.document.getElementById('pClock');
-    pGauge = presentWin.document.getElementById('pGauge');
-    pGaugeWrap = presentWin.document.getElementById('pGaugeWrap');
-    pMsg = presentWin.document.getElementById('pMsg');
-    pFsBtn = presentWin.document.getElementById('pFsBtn');
-  } catch (e) { return; }
-  if (!pClock || !pGauge || !pMsg) return;
-  pClock.textContent = clockEl.textContent;
-  pClock.className = clockEl.className;
-  pGauge.style.width = fillEl.style.width;
-  pGauge.className = 'gaugeFill' +
-    (fillEl.classList.contains('danger') ? ' danger' : fillEl.classList.contains('caution') ? ' caution' : fillEl.classList.contains('warn') ? ' warn' : '');
-  if (pGaugeWrap) pGaugeWrap.style.display = gaugeVisible ? '' : 'none';
-  pMsg.textContent = freeMessageInput.value;
-  presentWin.document.body.className = 'font-' + clockFont +
-    (theme === 'light' ? ' theme-light' : '') +
-    ' digit-' + digitColor;
-  if (pFsBtn && !presentWin.document.fullscreenElement) {
-    pFsBtn.textContent = I18N[lang].fullscreen;
-  }
-}
-
-presentFsBtn.addEventListener('click', async () => {
-  if (!presentWin || presentWin.closed) {
-    await openPresentWindow();
-    if (!presentWin) return; // ポップアップがブロックされた場合
-  }
-  presentWin.focus();
-  try {
-    if (!presentWin.document.fullscreenElement) {
-      await presentWin.document.documentElement.requestFullscreen();
-    } else {
-      await presentWin.document.exitFullscreen();
-    }
-  } catch (e) {
-    presentDiag.textContent = '全画面表示を開始できませんでした。ポップアップ内をクリックしてからもう一度お試しください。';
-    setTimeout(() => { presentDiag.textContent = ''; }, 5000);
-  }
-});
-
-freeMessageInput.addEventListener('input', syncPresentWindow);
+// ブラウザ無料版では拡張画面を持たない。
+function syncPresentWindow() {}
 
 // ---------- spacebar: start / pause ----------
 document.addEventListener('keydown', (e) => {
