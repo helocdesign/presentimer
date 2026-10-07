@@ -7,7 +7,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Roboto+Mono:wght@500;700&family=Orbitron:wght@600;700&display=swap');
 
 :root {
-  --top-reserve: 56px; /* space kept free for the fixed header row (buttons / app name) */
+  --top-reserve: clamp(40px, calc(2.6vw * 1.2 + 24px), 88px); /* space kept free for the fixed header row (buttons / app name) */
   --bg: #000000;
   --bg-raised: #161616;
   --text: #F5F1E8;
@@ -59,7 +59,8 @@ body {
   align-items: center;
   gap: 10px;
   width: 100%;
-  margin-block: auto;
+  flex: 1 0 auto;
+  margin-block: 0;
 }
 
 .settings-section {
@@ -111,7 +112,7 @@ body {
 .clock {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  font-size: clamp(28px, min(var(--fit-h, 58vh), 24vw, var(--fit-w, 24vw)), 560px);
+  font-size: clamp(28px, min(var(--fit-h, 58vh), var(--fit-w, 24vw)), 1600px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--warn);
@@ -121,8 +122,9 @@ body {
   white-space: nowrap;
 }
 .clock.standby { color: var(--text-dim); }
-.clock.hh-format { font-size: clamp(24px, min(var(--fit-h, 58vh), 24vw, var(--fit-w, 15vw)), 560px); }
+.clock.hh-format { font-size: clamp(24px, min(var(--fit-h, 58vh), var(--fit-w, 15vw)), 1600px); }
 .clock.warn { color: var(--mid); }
+.clock.caution { color: var(--warn); }
 .clock.danger { color: var(--danger); }
 .clock.over { animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse {
@@ -146,6 +148,7 @@ body {
   transition: width 1s linear, background-color 0.4s ease;
 }
 .progress-fill.warn { background: var(--mid); }
+.progress-fill.caution { background: var(--warn); }
 .progress-fill.danger { background: var(--danger); }
 
 .progress-ticks {
@@ -263,6 +266,7 @@ body.theme-light.digit-white .clock { color: #000000; }
 
 /* 残り時間が少なくなったら、選択中の文字色より警告色を優先表示 */
 body .clock.warn { color: var(--mid) !important; }
+body .clock.caution { color: var(--warn) !important; }
 body .clock.danger { color: var(--danger) !important; }
 
 button {
@@ -310,7 +314,7 @@ button.primary.running { background: var(--bg-raised); color: var(--text); borde
 .fs-corner-btn {
   position: fixed;
   top: 12px;
-  left: 12px;
+  right: 12px;
   z-index: 50;
   font-size: 12px;
   padding: 8px 14px;
@@ -429,7 +433,7 @@ button.off { color: var(--text-dim); border-color: var(--line); opacity: 0.6; }
 .present-mode-btn:hover { border-color: var(--warn); }
 .present-diag {
   position: fixed;
-  top: 60px;
+  bottom: 64px;
   right: 12px;
   z-index: 50;
   font-size: 11px;
@@ -437,34 +441,75 @@ button.off { color: var(--text-dim); border-color: var(--line); opacity: 0.6; }
   max-width: 240px;
   text-align: right;
 }
-.present-corner-btn {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 50;
-  font-size: 12px;
-  padding: 8px 14px;
-  color: var(--text-dim);
-}
 .app-title {
   position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  left: 16px;
   z-index: 40;
-  text-align: center;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 0.9em;
   white-space: nowrap;
-  line-height: 1.3;
-  color: var(--text-dim);
+  line-height: 1.2;
+  color: var(--text);
   pointer-events: none;
   user-select: none;
 }
-.app-title-main { font-size: 20px; font-weight: 500; letter-spacing: 0.08em; }
-.app-title-sub { font-size: 10px; letter-spacing: 0.06em; }
+.app-title-main { font-size: clamp(18px, 2.6vw, 48px); font-weight: 700; letter-spacing: 0.04em; }
+.app-title-accent { color: var(--warn); }
+.app-title-sub { font-size: clamp(10px, 1.05vw, 18px); font-weight: 700; letter-spacing: 0.04em; color: var(--text-dim); }
 body.style-timeonly .app-title { display: none; }
 @media (max-width: 720px) {
-  :root { --top-reserve: 104px; }
-  .app-title { top: 60px; }
+  :root { --top-reserve: 64px; }
+  .app-title { flex-direction: column; align-items: flex-start; row-gap: 2px; }
+}
+/* time row: current time | message | start / end */
+.timer-content > .clock-wrap { flex: 1 0 auto; }
+.clock-wrap > .clock { margin-top: auto; }
+.clock-wrap > .progress-track { margin-bottom: auto; }
+.clock-wrap > .time-row { margin-top: 0; }
+/* while measuring, drop the stretch so natural heights can be read */
+.timer-content.measuring, .timer-content.measuring > .clock-wrap { flex: none; }
+.time-row {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(8px, 1.2vw, 20px);
+  width: min(1600px, 96vw);
+}
+.time-row .message-box { flex: 1 1 0; width: auto; min-width: 0; max-width: none; }
+.time-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--text-dim);
+  border-radius: 4px;
+  padding: 4px clamp(8px, 1.2vw, 20px);
+  line-height: 1.1;
+  user-select: none;
+}
+.time-val {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.time-cap { font-size: clamp(10px, 1vw, 16px); color: var(--text-dim); margin-top: 2px; }
+.time-now .time-val { font-size: clamp(20px, 2.8vw, 52px); }
+.time-side { display: flex; gap: clamp(6px, 0.8vw, 14px); }
+.time-small .time-val { font-size: clamp(16px, 2.2vw, 42px); }
+.time-box.frozen .time-val { color: var(--text); }
+body.style-simple .time-row,
+body.style-timeonly .time-row { display: none; }
+@media (max-width: 720px) {
+  .time-row { flex-wrap: wrap; }
+  .time-row { align-items: flex-end; }
+  .time-row .message-box { order: -1; flex: 1 1 100%; }
+  .time-now { flex: 1 1 0; }
+  .time-side { flex: 2 1 0; }
+  .time-side .time-box { flex: 1 1 0; }
 }
 .bottom-row {
   display: flex;
@@ -559,13 +604,12 @@ select {
 <body>
 
 <div class="app-title">
-  <div class="app-title-main">PRESEN TIMER V1</div>
+  <div class="app-title-main">PRESEN <span class="app-title-accent">TIMER</span> V1</div>
   <div class="app-title-sub">produced by helocdesign</div>
 </div>
 
 <button id="fullscreenBtn" class="fs-corner-btn">全画面表示</button>
 
-<button id="presentFsBtn" class="present-mode-btn present-corner-btn" data-i18n="presentMode">プレゼンテーションモード</button>
 <span id="presentDiag" class="present-diag"></span>
 
 <div class="timer-section">
@@ -575,10 +619,26 @@ select {
 
   <div class="clock-wrap">
     <div class="state-label" id="stateLabel">スタンバイ</div>
-    <div class="clock standby" id="clock">10:00</div>
+    <div class="clock standby" id="clock">30:00</div>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div><div class="progress-ticks"></div></div>
-    <div class="message-box">
-      <textarea id="freeMessageInput" data-i18n-placeholder="messagePlaceholder" placeholder="ここにメッセージを入力…" maxlength="120" rows="2"></textarea>
+    <div class="time-row" id="timeRow">
+      <div class="time-box time-now">
+        <div class="time-val" id="nowTime">00:00:00</div>
+        <div class="time-cap" data-i18n="nowTimeLabel">現在時刻</div>
+      </div>
+      <div class="message-box">
+        <textarea id="freeMessageInput" data-i18n-placeholder="messagePlaceholder" placeholder="ここにメッセージを入力…" maxlength="120" rows="2"></textarea>
+      </div>
+      <div class="time-side">
+        <div class="time-box time-small">
+          <div class="time-val" id="startTime">00:00</div>
+          <div class="time-cap" data-i18n="startTimeLabel">開始時間</div>
+        </div>
+        <div class="time-box time-small">
+          <div class="time-val" id="endTime">00:00</div>
+          <div class="time-cap" data-i18n="endTimeLabel">終了時間</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -662,7 +722,8 @@ select {
     <div class="settings-tier">
       <div class="mode-style-row">
         <select id="modeSelect">
-          <option value="down" data-i18n="modeDown">モード: カウントダウン</option>
+          <option value="down1" data-i18n="modeDown1">モード: カウントダウン1</option>
+          <option value="down2" data-i18n="modeDown2" selected>モード: カウントダウン2(警告表示あり)</option>
           <option value="up" data-i18n="modeUp">モード: カウントアップ</option>
         </select>
         <select id="gaugeToggleSelect">
@@ -696,8 +757,9 @@ select {
     </div><!-- /collapsibleSettings -->
 
     <div class="bottom-row">
-      <button id="settingsToggleBtn" class="settings-toggle-btn">詳細設定</button>
+      <button id="presentFsBtn" class="present-mode-btn" data-i18n="presentMode">拡張モニター</button>
       <div class="shortcut-hint" id="shortcutHint" data-i18n="shortcutHint">Space:開始・一時停止・再開　/　Esc:全画面表示解除</div>
+      <button id="settingsToggleBtn" class="settings-toggle-btn">詳細設定</button>
       <a id="manualLink" class="manual-btn" href="https://timer.helocdesign.net/manual" target="_blank" rel="noopener noreferrer" data-i18n="manualBtn">説明書</a>
     </div>
 
@@ -719,17 +781,18 @@ const I18N = {
     soundBell: '音の種類: ベル', soundSquare: '音の種類: 電子音', soundTriangle: '音の種類: やわらか',
     soundCheck: '音の確認',
     warn1Label: '警告(1回)', warn2Label: '危険(2回)', endLabel: '終了(3回・自動)',
-    modeDown: 'モード: カウントダウン', modeUp: 'モード: カウントアップ',
+    modeDown1: 'モード: カウントダウン1', modeDown2: 'モード: カウントダウン2(警告表示あり)', modeUp: 'モード: カウントアップ',
     styleFull: '表示スタイル: フル', styleSimple: '表示スタイル: シンプル', styleTimeonly: '表示スタイル: 時間のみ',
     gaugeOn: 'ゲージ: ON', gaugeOff: 'ゲージ: OFF',
     fontStd: 'フォント: 標準', fontMono: 'フォント: モノスペース', fontDigital: 'フォント: デジタル',
     themeDark: '背景色: 黒', themeLight: '背景色: 白',
     digitWhite: '文字色: 白', digitYellow: '文字色: 黄色',
     digitLightblue: '文字色: 水色', digitPink: '文字色: ピンク',
-    presentMode: 'プレゼンテーションモード', presentModeExit: 'プレゼンテーションモードを解除',
+    presentMode: '拡張モニター', presentModeExit: '拡張モニターを解除',
     settingsOpen: '詳細設定', settingsClose: '詳細設定を閉じる ▲',
     labelRemaining: '残り時間', labelElapsed: '経過時間',
     manualBtn: '説明書',
+    nowTimeLabel: '現在時刻', startTimeLabel: '開始時間', endTimeLabel: '終了時間',
     memName: 'M', memNone: '未設定', memSave: '登録', memEmptyTip: '右の「登録」で、いまの時間を登録できます',
     fullscreen: '全画面表示', fullscreenExit: '全画面表示を解除',
     shortcutHint: 'Space:開始・一時停止・再開　/　Esc:全画面表示解除',
@@ -746,17 +809,18 @@ const I18N = {
     soundBell: 'Sound: Bell', soundSquare: 'Sound: Buzzer', soundTriangle: 'Sound: Soft',
     soundCheck: 'Test Sound',
     warn1Label: 'Warning (1 beep)', warn2Label: 'Danger (2 beeps)', endLabel: 'End (3 beeps, auto)',
-    modeDown: 'Mode: Countdown', modeUp: 'Mode: Count Up',
+    modeDown1: 'Mode: Countdown 1', modeDown2: 'Mode: Countdown 2 (with warnings)', modeUp: 'Mode: Count Up',
     styleFull: 'Style: Full', styleSimple: 'Style: Simple', styleTimeonly: 'Style: Time Only',
     gaugeOn: 'Gauge: ON', gaugeOff: 'Gauge: OFF',
     fontStd: 'Font: Standard', fontMono: 'Font: Monospace', fontDigital: 'Font: Digital',
     themeDark: 'Theme: Dark', themeLight: 'Theme: Light',
     digitWhite: 'Digit Color: White', digitYellow: 'Digit Color: Yellow',
     digitLightblue: 'Digit Color: Light Blue', digitPink: 'Digit Color: Pink',
-    presentMode: 'Presentation Mode', presentModeExit: 'Exit Presentation Mode',
+    presentMode: 'Extended Monitor', presentModeExit: 'Exit Extended Monitor',
     settingsOpen: 'Settings', settingsClose: 'Hide Settings ▲',
     labelRemaining: 'Time Remaining', labelElapsed: 'Elapsed Time',
     manualBtn: 'Manual',
+    nowTimeLabel: 'Current Time', startTimeLabel: 'Start Time', endTimeLabel: 'End Time',
     memName: 'M', memNone: 'Not set', memSave: 'Save', memEmptyTip: 'Use Save on the right to store the current time',
     fullscreen: 'Fullscreen', fullscreenExit: 'Exit Fullscreen',
     shortcutHint: 'Space: Start/Pause/Resume  /  Esc: Exit Fullscreen',
@@ -765,7 +829,7 @@ const I18N = {
 };
 let lang = 'ja';
 
-let totalSeconds = 10 * 60;
+let totalSeconds = 30 * 60;
 let warn1Seconds = 60;
 let warn2Seconds = 10;
 let remaining = totalSeconds;
@@ -781,6 +845,8 @@ let theme = 'dark'; // 'dark' | 'light'
 let settingsCollapsed = true;
 let digitColor = 'white'; // 'white' | 'yellow' | 'lightblue' | 'pink'
 let mode = 'down'; // 'down' = カウントダウン, 'up' = カウントアップ
+let modeKind = 'down2'; // 'down1' = 色変化なし, 'down2' = 警告表示あり(5分で黄色/1分で赤), 'up' = カウントアップ
+function setModeKind(k) { modeKind = k; mode = k === 'up' ? 'up' : 'down'; }
 let presentWin = null;
 let displayStyle = 'full'; // 'full' | 'simple' | 'timeonly'
 
@@ -875,8 +941,8 @@ function render() {
   clockEl.textContent = formatTime(remaining);
   clockEl.classList.toggle('hh-format', totalSeconds >= 3600);
   if (clockEl.textContent.length !== renderedLen) { renderedLen = clockEl.textContent.length; if (typeof fitClock === 'function') fitClock(); }
-  clockEl.classList.remove('warn', 'danger', 'over', 'standby');
-  fillEl.classList.remove('warn', 'danger');
+  clockEl.classList.remove('warn', 'caution', 'danger', 'over', 'standby');
+  fillEl.classList.remove('warn', 'caution', 'danger');
 
   if (!hasStarted) {
     clockEl.classList.add('standby');
@@ -897,13 +963,15 @@ function render() {
   } else {
     const ratio = totalSeconds > 0 ? timeLeft / totalSeconds : 0;
     fillEl.style.width = (ratio * 100) + '%';
-    if (warn2Seconds > 0 && timeLeft <= warn2Seconds) {
-      clockEl.classList.add('danger');
-      fillEl.classList.add('danger');
-    } else if (warn1Seconds > 0 && timeLeft <= warn1Seconds) {
-      clockEl.classList.add('warn');
-      fillEl.classList.add('warn');
+    let level = null;
+    if (modeKind === 'down2') {
+      if (timeLeft <= 60) level = 'danger';
+      else if (timeLeft <= 300) level = 'caution';
+    } else if (modeKind === 'up') {
+      if (warn2Seconds > 0 && timeLeft <= warn2Seconds) level = 'danger';
+      else if (warn1Seconds > 0 && timeLeft <= warn1Seconds) level = 'warn';
     }
+    if (level) { clockEl.classList.add(level); fillEl.classList.add(level); }
   }
   syncPresentWindow();
 }
@@ -923,10 +991,35 @@ function tick() {
   render();
 }
 
+// ---------- clock boxes (current / start / end) ----------
+const nowTimeEl = document.getElementById('nowTime');
+const startTimeEl = document.getElementById('startTime');
+const endTimeEl = document.getElementById('endTime');
+let startedAtMs = null, endAtMs = null;
+function hhmm(ms, withSec) {
+  const d = new Date(ms);
+  const p2 = n => String(n).padStart(2, '0');
+  return p2(d.getHours()) + ':' + p2(d.getMinutes()) + (withSec ? ':' + p2(d.getSeconds()) : '');
+}
+function updateTimeBoxes() {
+  const nowMs = Date.now();
+  const ended = endAtMs !== null && nowMs >= endAtMs;
+  // current time freezes at the end time once it is reached
+  nowTimeEl.textContent = hhmm(ended ? endAtMs : nowMs, true);
+  nowTimeEl.parentElement.classList.toggle('frozen', ended);
+  startTimeEl.textContent = startedAtMs === null ? '00:00' : hhmm(startedAtMs);
+  endTimeEl.textContent = endAtMs === null ? '00:00' : hhmm(endAtMs);
+  startTimeEl.parentElement.classList.toggle('frozen', startedAtMs !== null);
+  endTimeEl.parentElement.classList.toggle('frozen', ended);
+}
+function clearTimeBoxes() { startedAtMs = null; endAtMs = null; updateTimeBoxes(); }
+setInterval(updateTimeBoxes, 1000);
+
 function start() {
   if (running) return;
   getCtx();
   running = true;
+  if (startedAtMs === null) { startedAtMs = Date.now(); endAtMs = startedAtMs + totalSeconds * 1000; updateTimeBoxes(); }
   hasStarted = true;
   startBtn.textContent = I18N[lang].pauseLabel;
   startBtn.classList.add('running');
@@ -943,6 +1036,7 @@ function pause() {
 function reset() {
   pause();
   hasStarted = false;
+  clearTimeBoxes();
   remaining = mode === 'down' ? totalSeconds : 0;
   firedWarn1 = false; firedWarn2 = false; firedEnd = false;
   startBtn.textContent = I18N[lang].start;
@@ -1068,7 +1162,7 @@ document.addEventListener('fullscreenchange', updateFullscreenBtn);
 
 const modeSelect = document.getElementById('modeSelect');
 modeSelect.addEventListener('change', () => {
-  mode = modeSelect.value;
+  setModeKind(modeSelect.value);
   applyModeLabel();
   reset();
   syncUrl();
@@ -1220,12 +1314,14 @@ body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospac
 .clock{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(90px,min(58vh,32vw,var(--fit-w,32vw)),720px);line-height:1;font-variant-numeric:tabular-nums;color:var(--warn);letter-spacing:-0.02em;transition:color .4s ease;user-select:none;white-space:nowrap;}
 .clock.standby{color:var(--text-dim);}
 .clock.warn{color:var(--mid);}
+.clock.caution{color:var(--warn);}
 .clock.danger{color:var(--danger);}
 .clock.over{animation:pulse 1s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
 .gauge{width:80%;max-width:760px;height:10px;background:var(--line);border-radius:5px;overflow:hidden;}
 .gaugeFill{height:100%;width:100%;background:var(--warn);transition:width 1s linear, background-color .4s ease;}
 .gaugeFill.warn{background:var(--mid);}
+.gaugeFill.caution{background:var(--warn);}
 .gaugeFill.danger{background:var(--danger);}
 .msg{font-size:44px;color:var(--text);text-align:center;max-width:82%;min-height:1.3em;white-space:pre-wrap;}
 .fsBtn{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:20px;padding:18px 32px;border-radius:8px;border:1px solid var(--line);background:#161616;color:var(--text);cursor:pointer;}
@@ -1239,6 +1335,7 @@ body.digit-lightblue .clock{color:#5FC3E0;}
 body.digit-pink .clock{color:#E8759C;}
 body.theme-light.digit-white .clock{color:#000000;}
 body .clock.warn{color:var(--mid) !important;}
+body .clock.caution{color:var(--warn) !important;}
 body .clock.danger{color:var(--danger) !important;}
 .clock.hh-format{font-size:clamp(70px,min(58vh,32vw,var(--fit-w,21vw)),560px);}
 </style></head>
@@ -1370,7 +1467,7 @@ function syncPresentWindow() {
   pClock.className = clockEl.className;
   pGauge.style.width = fillEl.style.width;
   pGauge.className = 'gaugeFill' +
-    (fillEl.classList.contains('danger') ? ' danger' : fillEl.classList.contains('warn') ? ' warn' : '');
+    (fillEl.classList.contains('danger') ? ' danger' : fillEl.classList.contains('caution') ? ' caution' : fillEl.classList.contains('warn') ? ' warn' : '');
   if (pGaugeWrap) pGaugeWrap.style.display = gaugeVisible ? '' : 'none';
   pMsg.textContent = freeMessageInput.value;
   presentWin.document.body.className = 'font-' + clockFont +
@@ -1433,7 +1530,7 @@ function syncUrl() {
   params.set('warn1', formatMMSS(warn1Seconds));
   params.set('warn2', formatMMSS(warn2Seconds));
   params.set('msg', messageInput.value);
-  params.set('mode', mode);
+  params.set('mode', modeKind);
   params.set('style', displayStyle);
   params.set('gauge', gaugeVisible ? '1' : '0');
   params.set('font', clockFont);
@@ -1485,9 +1582,9 @@ function loadFromUrl() {
   if (w1 !== null) warn1Seconds = w1;
   if (w2 !== null) warn2Seconds = w2;
   if (msg) messageInput.value = msg;
-  if (m === 'up' || m === 'down') {
-    mode = m;
-    modeSelect.value = mode;
+  if (m === 'up' || m === 'down1' || m === 'down2' || m === 'down') {
+    setModeKind(m === 'down' ? 'down2' : m);
+    modeSelect.value = modeKind;
   }
   if (style === 'full' || style === 'simple' || style === 'timeonly') {
     displayStyle = style;
@@ -1587,7 +1684,9 @@ function fitClock() {
   const cs = getComputedStyle(sec);
   const settingsH = settingsSectionEl.offsetParent === null ? 0 : settingsSectionEl.offsetHeight;
   const avail = window.innerHeight - settingsH - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  timerContent.classList.add('measuring');
   const nonClock = timerContent.offsetHeight - clockEl.offsetHeight;
+  timerContent.classList.remove('measuring');
   document.documentElement.style.setProperty('--fit-h', Math.max(24, Math.floor(avail - nonClock - 2)) + 'px');
   fitClockWidth();
 }
